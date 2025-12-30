@@ -93,14 +93,23 @@ class UpdateManager {
 
   // Version comparison logic
   bool _isNewerVersion(String current, String latest) {
-    final currentParts = current.split('.').map(int.parse).toList();
-    final latestParts = latest.split('.').map(int.parse).toList();
-    
-    for (int i = 0; i < 3; i++) {
-      if (latestParts[i] > currentParts[i]) return true;
-      if (latestParts[i] < currentParts[i]) return false;
+    try {
+      final currentParts = current.split('.').map(int.parse).toList();
+      final latestParts = latest.split('.').map(int.parse).toList();
+      
+      // Ensure we have at least 3 parts
+      while (currentParts.length < 3) currentParts.add(0);
+      while (latestParts.length < 3) latestParts.add(0);
+      
+      for (int i = 0; i < 3; i++) {
+        if (latestParts[i] > currentParts[i]) return true;
+        if (latestParts[i] < currentParts[i]) return false;
+      }
+      return false;
+    } catch (e) {
+      print('Version comparison error: $e');
+      return false;
     }
-    return false;
   }
 
   // 🔥 STEP 3: Download APK with progress
@@ -607,17 +616,39 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
   Future<void> _checkForUpdates() async {
     await Future.delayed(const Duration(seconds: 2)); // Wait for app to settle
     
-    final updateManager = UpdateManager();
-    final updateInfo = await updateManager.checkForUpdates();
-    
-    // Debug: Show current version
-    final packageInfo = await PackageInfo.fromPlatform();
-    print('🔍 Current version: ${packageInfo.version}');
-    print('🔍 Latest version: ${updateInfo?['latestVersion'] ?? 'unknown'}');
-    print('🔍 Has update: ${updateInfo?['hasUpdate'] ?? false}');
-    
-    if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
-      _showUpdateDialog(updateInfo);
+    try {
+      final updateManager = UpdateManager();
+      final updateInfo = await updateManager.checkForUpdates();
+      
+      // Debug: Show current version
+      final packageInfo = await PackageInfo.fromPlatform();
+      print('🔍 Current version: ${packageInfo.version}');
+      print('🔍 Latest version: ${updateInfo?['latestVersion'] ?? 'unknown'}');
+      print('🔍 Has update: ${updateInfo?['hasUpdate'] ?? false}');
+      
+      if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
+        _showUpdateDialog(updateInfo);
+      } else if (mounted) {
+        // Show a subtle message that app is up to date
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ App is up to date (v${packageInfo.version})', style: GoogleFonts.outfit()),
+            backgroundColor: AppColors.neonCyan.withOpacity(0.8),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Update check error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to check for updates', style: GoogleFonts.outfit()),
+            backgroundColor: Colors.redAccent.withOpacity(0.8),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
   
