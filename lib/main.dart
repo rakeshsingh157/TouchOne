@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:open_filex/open_filex.dart';
 
 void main() {
   runApp(const MyApp());
@@ -152,21 +153,21 @@ class UpdateManager {
   }
 
   // 🔥 STEP 4: Install APK (opens Android installer)
-  Future<void> installApk(String filePath) async {
+  Future<bool> installApk(String filePath) async {
     try {
       final file = File(filePath);
       if (await file.exists()) {
-        // Open APK file using url_launcher
-        final uri = Uri.file(filePath);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-        }
+        print('📦 Opening APK installer: $filePath');
+        // Open APK file using open_filex
+        final result = await OpenFilex.open(filePath);
+        print('📱 Install result: ${result.message}');
+        return result.type == ResultType.done;
       }
+      print('❌ APK file not found: $filePath');
+      return false;
     } catch (e) {
-      print('Install failed: $e');
+      print('❌ Install failed: $e');
+      return false;
     }
   }
 }
