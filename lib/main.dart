@@ -161,6 +161,17 @@ class UpdateManager {
         // Open APK file using open_filex
         final result = await OpenFilex.open(filePath);
         print('📱 Install result: ${result.message}');
+        
+        // Delete APK after opening installer
+        if (result.type == ResultType.done) {
+          try {
+            await file.delete();
+            print('🗑️ APK file deleted: $filePath');
+          } catch (e) {
+            print('⚠️ Could not delete APK: $e');
+          }
+        }
+        
         return result.type == ResultType.done;
       }
       print('❌ APK file not found: $filePath');
@@ -629,15 +640,6 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       
       if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
         _showUpdateDialog(updateInfo);
-      } else if (mounted) {
-        // Show a subtle message that app is up to date
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✓ App is up to date (v${packageInfo.version})', style: GoogleFonts.outfit()),
-            backgroundColor: AppColors.neonCyan.withOpacity(0.8),
-            duration: Duration(seconds: 2),
-          ),
-        );
       }
     } catch (e) {
       print('❌ Update check error: $e');
@@ -1778,13 +1780,33 @@ class _UpdateDialogState extends State<UpdateDialog> {
 }
 
 // --- ABOUT PAGE ---
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
   @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  String _version = 'Loading...';
+  String _buildNumber = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _version = packageInfo.version;
+      _buildNumber = packageInfo.buildNumber;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // ... [Same implementation as before]
-    // Re-inlining to ensure file is complete
     return Scaffold(
       body: Stack(
         children: [
@@ -1819,13 +1841,15 @@ class AboutPage extends StatelessWidget {
                           const SizedBox(height: 20),
                           Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                           const SizedBox(height: 10),
-                          Text("v1.0.0", style: GoogleFonts.outfit(color: Colors.white54)),
+                          Text("v$_version (Build $_buildNumber)", style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16)),
+                          const SizedBox(height: 10),
+                          Text("NFC Data Transfer App", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 12)),
                           const SizedBox(height: 40),
                           _buildInfoRow(Icons.person, "Dev: Rakesh Kumar Singh"),
                           const SizedBox(height: 16),
                           _buildInfoRow(Icons.email, "kumarpatelrakesh222@gmail.com"),
                           const SizedBox(height: 16),
-                          _buildInfoRow(Icons.currency_rupee, "Donate: kumarpatelrakesh222@oksbi", isCopyable: true, context: context),
+                          _buildInfoRow(Icons.currency_rupee, "UPI: rakeshsingh157@oksbi", isCopyable: true),
                         ],
                       ).animate().scale(curve: Curves.easeOutBack),
                     ),
@@ -1843,11 +1867,12 @@ class AboutPage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text, {bool isCopyable = false, BuildContext? context}) {
+  Widget _buildInfoRow(IconData icon, String text, {bool isCopyable = false}) {
     return GestureDetector(
       onTap: isCopyable ? () {
-        Clipboard.setData(ClipboardData(text: text.replaceAll("Donate: ", "")));
-        ScaffoldMessenger.of(context!).showSnackBar(SnackBar(content: Text("Copied to Clipboard", style: GoogleFonts.outfit()), backgroundColor: AppColors.neonPurple));
+        final upiId = text.replaceAll("UPI: ", "");
+        Clipboard.setData(ClipboardData(text: upiId));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("UPI ID copied: $upiId", style: GoogleFonts.outfit()), backgroundColor: AppColors.neonPurple));
       } : null,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
