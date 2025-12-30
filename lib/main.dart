@@ -839,18 +839,21 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
 
   Widget _buildHeader() => Column(
     children: [
-      SizedBox(height: 20),
+      SizedBox(height: 10),
+      // Navigation buttons row
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // Left button
             IconButton(
               onPressed: _openAboutPage,
-              icon: Icon(Icons.info_outline, color: Colors.white30, size: 24),
+              icon: Icon(Icons.info_outline, color: Colors.white30, size: 26),
               tooltip: 'About',
+              padding: EdgeInsets.all(12),
             ),
-            Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4, shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)])),
+            // Right buttons
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -866,21 +869,28 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
                       );
                     }
                   },
-                  icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple, size: 24),
-                  tooltip: 'Support via UPI',
+                  icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple, size: 26),
+                  tooltip: 'Donate',
+                  padding: EdgeInsets.all(12),
                 ),
+                SizedBox(width: 4),
                 IconButton(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ReceivedHistoryPage())),
-                  icon: Icon(Icons.history, color: Colors.white30, size: 24),
+                  icon: Icon(Icons.history, color: Colors.white30, size: 26),
                   tooltip: 'History',
+                  padding: EdgeInsets.all(12),
                 ),
               ],
             ),
           ],
         ),
       ),
-      Text("NFC DATA BEAM", style: GoogleFonts.outfit(fontSize: 12, color: AppColors.textDim, letterSpacing: 6)),
-      SizedBox(height: 10),
+      SizedBox(height: 16),
+      // App title
+      Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4, shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)])),
+      SizedBox(height: 8),
+      Text("NFC DATA BEAM", style: GoogleFonts.outfit(fontSize: 11, color: AppColors.textDim, letterSpacing: 6)),
+      SizedBox(height: 16),
       _buildQuickStats(),
     ]
   );
@@ -1841,7 +1851,7 @@ class _AboutPageState extends State<AboutPage> {
                           const SizedBox(height: 20),
                           Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
                           const SizedBox(height: 10),
-                          Text("v$_version (Build $_buildNumber)", style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16)),
+                          Text("v$_version", style: GoogleFonts.outfit(color: Colors.white54, fontSize: 16)),
                           const SizedBox(height: 10),
                           Text("NFC Data Transfer App", style: GoogleFonts.outfit(color: AppColors.neonCyan, fontSize: 12)),
                           const SizedBox(height: 40),

@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
-  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.6/TouchOne-v1.0.6.apk",
-  "changelog": "✨ New:\n• About page shows current app version and build number\n• Auto-delete APK after installation\n• Removed 'up to date' notification (cleaner UX)\n\n📦 Previous:\n• Custom APK naming (TouchOne-v1.0.6.apk)\n• Fixed navigation layout\n\n💜 Features:\n• UPI donation support\n• NFC data transfer\n• Auto-update system"
+  "version": "1.0.7",
+  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.7/TouchOne-v1.0.7.apk",
+  "changelog": "🎨 UI Improvements:\n• Completely redesigned navigation layout\n• Buttons now properly aligned and spaced\n• App title centered below navigation\n• Cleaner, more professional look\n\n✨ Previous:\n• About page shows version info\n• Auto-delete APK after install\n• Custom APK naming\n\n💜 Features:\n• UPI donation support\n• NFC data transfer\n• Auto-update system"
 }
