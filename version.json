@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
-  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.8/TouchOne-v1.0.8.apk",
-  "changelog": "🎨 Perfect Navigation:\n• All 3 buttons evenly distributed across top\n• Equal size containers (48x48px)\n• Beautiful card-style buttons with backgrounds\n• Donate button highlighted with purple glow\n• Perfect symmetry and alignment\n\n✨ Features:\n• UPI donation support\n• NFC data transfer\n• Auto-update system\n• Version info in About"
+  "version": "1.0.9",
+  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.9/TouchOne-v1.0.9.apk",
+  "changelog": "✅ Fixed:\n• Package parsing error resolved\n• Clean rebuild for better compatibility\n• Installation now works smoothly\n\n🎨 UI:\n• Perfect navigation with 3 evenly distributed buttons\n• Card-style design with purple highlight\n\n💜 Features:\n• UPI donation support\n• NFC data transfer\n• Auto-update system"
 }
