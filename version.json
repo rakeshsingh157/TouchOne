@@ -1,0 +1,5 @@
+{
+  "version": "1.0.1",
+  "download_url": "https://github.com/YOUR_USERNAME/YOUR_REPO/releases/download/v1.0.1/TouchOne-v1.0.1.apk",
+  "changelog": "🎉 New Features:\n• Received data history tracking\n• Transfer statistics\n• Copy & share functionality\n• Auto-update system\n\n🐛 Bug Fixes:\n• NFC receiver improvements\n• UI enhancements"
+}
