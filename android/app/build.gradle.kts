@@ -39,6 +39,14 @@ android {
     }
 }
 
+android.applicationVariants.all {
+    val variant = this
+    variant.outputs.all {
+        (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+            "TouchOne-v${variant.versionName}.apk"
+    }
+}
+
 flutter {
     source = "../.."
 }
