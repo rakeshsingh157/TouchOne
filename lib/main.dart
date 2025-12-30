@@ -838,30 +838,44 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
   Widget _buildHeader() => Column(
     children: [
       SizedBox(height: 20),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(onPressed: _openAboutPage, icon: Icon(Icons.info_outline, color: Colors.white30)),
-          Spacer(),
-          Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4, shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)])),
-          Spacer(),
-          IconButton(
-            onPressed: () async {
-              final upiUrl = 'upi://pay?pa=kumarpatelrakesh222@oksbi&pn=TouchOne%20NFC&cu=INR';
-              final uri = Uri.parse(upiUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Unable to open UPI app', style: GoogleFonts.outfit()))
-                );
-              }
-            },
-            icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple),
-            tooltip: 'Support via UPI',
-          ),
-          IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ReceivedHistoryPage())), icon: Icon(Icons.history, color: Colors.white30))
-        ]
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: _openAboutPage,
+              icon: Icon(Icons.info_outline, color: Colors.white30, size: 24),
+              tooltip: 'About',
+            ),
+            Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4, shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)])),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () async {
+                    final upiUrl = 'upi://pay?pa=rakeshsingh157@oksbi&pn=TouchOne%20NFC&cu=INR';
+                    final uri = Uri.parse(upiUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Unable to open UPI app', style: GoogleFonts.outfit()))
+                      );
+                    }
+                  },
+                  icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple, size: 24),
+                  tooltip: 'Support via UPI',
+                ),
+                IconButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ReceivedHistoryPage())),
+                  icon: Icon(Icons.history, color: Colors.white30, size: 24),
+                  tooltip: 'History',
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       Text("NFC DATA BEAM", style: GoogleFonts.outfit(fontSize: 12, color: AppColors.textDim, letterSpacing: 6)),
       SizedBox(height: 10),
