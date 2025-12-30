@@ -121,14 +121,25 @@ class UpdateManager {
       isDownloading.value = true;
       downloadProgress.value = 0.0;
       
-      // Get download directory
-      final dir = await getExternalStorageDirectory();
-      final filePath = '${dir!.path}/TouchOne_update.apk';
+      // Use Downloads directory for better compatibility
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = Directory('/storage/emulated/0/Download');
+        if (!await dir.exists()) {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getExternalStorageDirectory();
+      }
+      
+      final filePath = '${dir!.path}/TouchOne-update.apk';
+      print('📥 Downloading to: $filePath');
       
       // Delete old APK if exists
       final file = File(filePath);
       if (await file.exists()) {
         await file.delete();
+        print('🗑️ Deleted old APK');
       }
       
       // Download with progress tracking using Dio
@@ -141,12 +152,31 @@ class UpdateManager {
             downloadProgress.value = received / total;
           }
         },
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          validateStatus: (status) => status! < 500,
+        ),
       );
+      
+      // Verify file exists and has content
+      if (await file.exists()) {
+        final fileSize = await file.length();
+        print('✅ Download complete: ${fileSize} bytes');
+        if (fileSize < 1000000) { // Less than 1MB is suspicious
+          print('⚠️ Downloaded file is too small, might be corrupted');
+          await file.delete();
+          return null;
+        }
+      } else {
+        print('❌ Downloaded file not found');
+        return null;
+      }
       
       isDownloading.value = false;
       return filePath;
     } catch (e) {
-      print('Download failed: $e');
+      print('❌ Download failed: $e');
       isDownloading.value = false;
       return null;
     }
@@ -157,20 +187,31 @@ class UpdateManager {
     try {
       final file = File(filePath);
       if (await file.exists()) {
-        print('📦 Opening APK installer: $filePath');
+        final fileSize = await file.length();
+        print('📦 Opening APK installer: $filePath (${fileSize} bytes)');
+        
+        // Give a small delay to ensure file is fully written
+        await Future.delayed(Duration(milliseconds: 500));
+        
         // Open APK file using open_filex
-        final result = await OpenFilex.open(filePath);
+        final result = await OpenFilex.open(
+          filePath,
+          type: 'application/vnd.android.package-archive',
+        );
         print('📱 Install result: ${result.message}');
         
-        // Delete APK after opening installer
-        if (result.type == ResultType.done) {
+        // Don't delete immediately - let user complete installation
+        // Delete after a delay
+        Future.delayed(Duration(seconds: 3), () async {
           try {
-            await file.delete();
-            print('🗑️ APK file deleted: $filePath');
+            if (await file.exists()) {
+              await file.delete();
+              print('🗑️ APK file deleted');
+            }
           } catch (e) {
             print('⚠️ Could not delete APK: $e');
           }
-        }
+        });
         
         return result.type == ResultType.done;
       }
