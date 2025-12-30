@@ -840,52 +840,72 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
   Widget _buildHeader() => Column(
     children: [
       SizedBox(height: 10),
-      // Navigation buttons row
+      // Navigation buttons row - evenly distributed
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left button
-            IconButton(
-              onPressed: _openAboutPage,
-              icon: Icon(Icons.info_outline, color: Colors.white30, size: 26),
-              tooltip: 'About',
-              padding: EdgeInsets.all(12),
+            // Info button
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _openAboutPage,
+                icon: Icon(Icons.info_outline, color: Colors.white60, size: 24),
+                tooltip: 'About',
+                padding: EdgeInsets.zero,
+              ),
             ),
-            // Right buttons
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: () async {
-                    final upiUrl = 'upi://pay?pa=rakeshsingh157@oksbi&pn=TouchOne%20NFC&cu=INR';
-                    final uri = Uri.parse(upiUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Unable to open UPI app', style: GoogleFonts.outfit()))
-                      );
-                    }
-                  },
-                  icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple, size: 26),
-                  tooltip: 'Donate',
-                  padding: EdgeInsets.all(12),
-                ),
-                SizedBox(width: 4),
-                IconButton(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ReceivedHistoryPage())),
-                  icon: Icon(Icons.history, color: Colors.white30, size: 26),
-                  tooltip: 'History',
-                  padding: EdgeInsets.all(12),
-                ),
-              ],
+            // Donate button
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.neonPurple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.neonPurple.withOpacity(0.3)),
+              ),
+              child: IconButton(
+                onPressed: () async {
+                  final upiUrl = 'upi://pay?pa=rakeshsingh157@oksbi&pn=TouchOne%20NFC&cu=INR';
+                  final uri = Uri.parse(upiUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Unable to open UPI app', style: GoogleFonts.outfit()))
+                    );
+                  }
+                },
+                icon: Icon(Icons.volunteer_activism, color: AppColors.neonPurple, size: 24),
+                tooltip: 'Donate',
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            // History button
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => const ReceivedHistoryPage())),
+                icon: Icon(Icons.history, color: Colors.white60, size: 24),
+                tooltip: 'History',
+                padding: EdgeInsets.zero,
+              ),
             ),
           ],
         ),
       ),
-      SizedBox(height: 16),
+      SizedBox(height: 20),
       // App title
       Text("TouchOne", style: GoogleFonts.orbitron(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 4, shadows: [Shadow(color: AppColors.neonCyan, blurRadius: 20)])),
       SizedBox(height: 8),
