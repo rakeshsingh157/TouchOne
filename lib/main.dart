@@ -56,17 +56,25 @@ class UpdateManager {
   String? get downloadUrl => _downloadUrl;
   String? get changelog => _changelog;
 
-  // 🔥 STEP 2: Check for updates
+  // 🔥 STEP 2: Check for updates with improved error handling
   Future<Map<String, dynamic>?> checkForUpdates() async {
     try {
       // Get current app version
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
       
+      print('📱 Current version: $currentVersion');
+      print('🔍 Checking for updates at: $versionUrl');
+      
       // Fetch version.json from server/GitHub
       final response = await http.get(Uri.parse(versionUrl)).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw TimeoutException('Update check timed out');
+        },
       );
+      
+      print('📡 Response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -74,8 +82,11 @@ class UpdateManager {
         _downloadUrl = data['download_url'];
         _changelog = data['changelog'] ?? 'Bug fixes and improvements';
         
+        print('✅ Latest version: $_latestVersion');
+        
         // Compare versions
         if (_isNewerVersion(currentVersion, _latestVersion!)) {
+          print('🆕 Update available: $currentVersion → $_latestVersion');
           return {
             'hasUpdate': true,
             'currentVersion': currentVersion,
@@ -83,12 +94,29 @@ class UpdateManager {
             'downloadUrl': _downloadUrl,
             'changelog': _changelog,
           };
+        } else {
+          print('✓ App is up to date');
         }
+      } else if (response.statusCode == 404) {
+        print('⚠️ version.json not found (404)');
+        return {'hasUpdate': false, 'error': 'Version file not found'};
+      } else {
+        print('⚠️ Server error: ${response.statusCode}');
+        return {'hasUpdate': false, 'error': 'Server error: ${response.statusCode}'};
       }
       return {'hasUpdate': false};
+    } on TimeoutException catch (e) {
+      print('⏱️ Update check timeout: $e');
+      return {'hasUpdate': false, 'error': 'Connection timeout'};
+    } on SocketException catch (e) {
+      print('🌐 No internet connection: $e');
+      return {'hasUpdate': false, 'error': 'No internet connection'};
+    } on FormatException catch (e) {
+      print('📄 Invalid JSON format: $e');
+      return {'hasUpdate': false, 'error': 'Invalid response format'};
     } catch (e) {
-      print('Update check failed: $e');
-      return null;
+      print('❌ Update check failed: $e');
+      return {'hasUpdate': false, 'error': e.toString()};
     }
   }
 
@@ -113,9 +141,12 @@ class UpdateManager {
     }
   }
 
-  // 🔥 STEP 3: Download APK with progress
+  // 🔥 STEP 3: Download APK with progress and comprehensive error handling
   Future<String?> downloadApk() async {
-    if (_downloadUrl == null) return null;
+    if (_downloadUrl == null) {
+      print('❌ Download URL is null');
+      return null;
+    }
     
     try {
       isDownloading.value = true;
@@ -126,14 +157,22 @@ class UpdateManager {
       if (Platform.isAndroid) {
         dir = Directory('/storage/emulated/0/Download');
         if (!await dir.exists()) {
+          print('⚠️ Download folder not found, using external storage');
           dir = await getExternalStorageDirectory();
         }
       } else {
         dir = await getExternalStorageDirectory();
       }
       
-      final filePath = '${dir!.path}/TouchOne-update.apk';
+      if (dir == null) {
+        print('❌ Could not access storage directory');
+        isDownloading.value = false;
+        return null;
+      }
+      
+      final filePath = '${dir.path}/TouchOne-update.apk';
       print('📥 Downloading to: $filePath');
+      print('🔗 Download URL: $_downloadUrl');
       
       // Delete old APK if exists
       final file = File(filePath);
@@ -143,13 +182,22 @@ class UpdateManager {
       }
       
       // Download with progress tracking using Dio
-      final dio = Dio();
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: Duration(seconds: 30),
+          receiveTimeout: Duration(seconds: 300), // 5 minutes for large files
+        ),
+      );
+      
       await dio.download(
         _downloadUrl!,
         filePath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
             downloadProgress.value = received / total;
+            if (received % (1024 * 1024) == 0) { // Log every 1MB
+              print('📊 Downloaded: ${(received / 1024 / 1024).toStringAsFixed(2)} MB / ${(total / 1024 / 1024).toStringAsFixed(2)} MB');
+            }
           }
         },
         options: Options(
@@ -162,19 +210,43 @@ class UpdateManager {
       // Verify file exists and has content
       if (await file.exists()) {
         final fileSize = await file.length();
-        print('✅ Download complete: ${fileSize} bytes');
+        print('✅ Download complete: ${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB');
+        
         if (fileSize < 1000000) { // Less than 1MB is suspicious
-          print('⚠️ Downloaded file is too small, might be corrupted');
+          print('❌ Downloaded file is too small (${fileSize} bytes), might be corrupted');
           await file.delete();
+          isDownloading.value = false;
           return null;
         }
+        
+        isDownloading.value = false;
+        return filePath;
       } else {
-        print('❌ Downloaded file not found');
+        print('❌ Downloaded file not found after download');
+        isDownloading.value = false;
         return null;
       }
-      
+    } on DioException catch (e) {
+      print('❌ Dio error: ${e.type} - ${e.message}');
+      if (e.type == DioExceptionType.connectionTimeout) {
+        print('⏱️ Connection timeout');
+      } else if (e.type == DioExceptionType.receiveTimeout) {
+        print('⏱️ Receive timeout');
+      } else if (e.type == DioExceptionType.badResponse) {
+        print('📡 Bad response: ${e.response?.statusCode}');
+      } else if (e.type == DioExceptionType.connectionError) {
+        print('🌐 Connection error - check internet');
+      }
       isDownloading.value = false;
-      return filePath;
+      return null;
+    } on SocketException catch (e) {
+      print('🌐 Network error: $e');
+      isDownloading.value = false;
+      return null;
+    } on FileSystemException catch (e) {
+      print('💾 File system error: $e');
+      isDownloading.value = false;
+      return null;
     } catch (e) {
       print('❌ Download failed: $e');
       isDownloading.value = false;
@@ -709,16 +781,104 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     if (_controller.text.isEmpty) {
         setState(() => _viewState = NfcState.error);
         _triggerHaptic(feedBackType: FeedbackType.error);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text("Please enter URL or text first", style: GoogleFonts.outfit()),
+              ],
+            ),
+            backgroundColor: Colors.red.withOpacity(0.8),
+          )
+        );
         Future.delayed(const Duration(seconds: 2), () { 
           if(mounted) setState(() => _viewState = NfcState.idle); 
         });
         return;
     }
-    _nfcManager.startNfc(_controller.text);
+    
+    try {
+      _nfcManager.startNfc(_controller.text);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.neonCyan),
+              ),
+              SizedBox(width: 12),
+              Text("Hold device near NFC tag...", style: GoogleFonts.outfit()),
+            ],
+          ),
+          backgroundColor: AppColors.neonCyan.withOpacity(0.2),
+          duration: Duration(seconds: 2),
+        )
+      );
+    } catch (e) {
+      print('❌ NFC start error: $e');
+      setState(() => _viewState = NfcState.error);
+      _triggerHaptic(feedBackType: FeedbackType.error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("NFC error: ${e.toString()}", style: GoogleFonts.outfit()),
+          backgroundColor: Colors.red.withOpacity(0.8),
+        )
+      );
+      Future.delayed(const Duration(seconds: 2), () { 
+        if(mounted) setState(() => _viewState = NfcState.idle); 
+      });
+    }
+  }
+
+  // Copy to clipboard with feedback
+  void _copyToClipboard(String text) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      _triggerHaptic(feedBackType: FeedbackType.success);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: AppColors.neonCyan),
+                SizedBox(width: 8),
+                Text("Copied to clipboard!", style: GoogleFonts.outfit()),
+              ],
+            ),
+            backgroundColor: AppColors.neonCyan.withOpacity(0.2),
+            duration: Duration(seconds: 2),
+          )
+        );
+      }
+    } catch (e) {
+      print('❌ Copy failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to copy", style: GoogleFonts.outfit()),
+            backgroundColor: Colors.red.withOpacity(0.8),
+          )
+        );
+      }
+    }
   }
 
   void _saveItem() async {
-    if (_controller.text.isNotEmpty) {
+    if (_controller.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Please enter some text first", style: GoogleFonts.outfit()),
+          backgroundColor: Colors.orange.withOpacity(0.8),
+        )
+      );
+      return;
+    }
+    
+    try {
       // Show Name Dialog
       final TextEditingController nameController = TextEditingController(text: "My Tag");
       await showDialog(
@@ -753,41 +913,139 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       );
       
       if (nameController.text.isNotEmpty) {
-           await StorageService.saveItem(nameController.text, _controller.text);
-           _triggerHaptic(feedBackType: FeedbackType.success);
-           ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text("Saved as ${nameController.text}", style: GoogleFonts.outfit()), backgroundColor: AppColors.neonPurple.withOpacity(0.8))
-           );
+        try {
+          await StorageService.saveItem(nameController.text, _controller.text);
+          _triggerHaptic(feedBackType: FeedbackType.success);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.bookmark_added, color: AppColors.neonPurple),
+                    SizedBox(width: 8),
+                    Expanded(child: Text("Saved as ${nameController.text}", style: GoogleFonts.outfit())),
+                  ],
+                ),
+                backgroundColor: AppColors.neonPurple.withOpacity(0.8),
+                action: SnackBarAction(
+                  label: 'VIEW',
+                  textColor: Colors.white,
+                  onPressed: () => _openSavedPage(),
+                ),
+              )
+            );
+          }
+        } catch (e) {
+          print('❌ Save failed: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Failed to save: $e", style: GoogleFonts.outfit()),
+                backgroundColor: Colors.red.withOpacity(0.8),
+              )
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Save dialog error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error opening save dialog", style: GoogleFonts.outfit()),
+            backgroundColor: Colors.red.withOpacity(0.8),
+          )
+        );
       }
     }
   }
 
   Future<void> _pickContact() async {
-    final status = await Permission.contacts.request();
-    if (status.isGranted) {
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact != null) {
-        final fullContact = await FlutterContacts.getContact(contact.id);
-        if (fullContact != null) {
-           // Basic vCard Manual Generation to ensure compatibility
-           final name = fullContact.displayName;
-           final phone = fullContact.phones.isNotEmpty ? fullContact.phones.first.number : "";
-           final email = fullContact.emails.isNotEmpty ? fullContact.emails.first.address : "";
-           
-           final vCard = "BEGIN:VCARD\n"
-                         "VERSION:3.0\n"
-                         "FN:$name\n"
-                         "TEL:$phone\n"
-                         "EMAIL:$email\n"
-                         "END:VCARD";
-                         
-           _nfcManager.startNfc(vCard, explicitMode: "CONTACT");
+    try {
+      final status = await Permission.contacts.request();
+      
+      if (status.isDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(child: Text("Contact permission denied", style: GoogleFonts.outfit())),
+                ],
+              ),
+              backgroundColor: Colors.orange.withOpacity(0.8),
+              action: SnackBarAction(
+                label: 'SETTINGS',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            )
+          );
+        }
+        return;
+      }
+      
+      if (status.isPermanentlyDenied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Please enable contacts in settings", style: GoogleFonts.outfit()),
+              backgroundColor: Colors.red.withOpacity(0.8),
+              action: SnackBarAction(
+                label: 'OPEN SETTINGS',
+                textColor: Colors.white,
+                onPressed: () => openAppSettings(),
+              ),
+            )
+          );
+        }
+        return;
+      }
+      
+      if (status.isGranted) {
+        final contact = await FlutterContacts.openExternalPick();
+        if (contact != null) {
+          final fullContact = await FlutterContacts.getContact(contact.id);
+          if (fullContact != null) {
+            // Basic vCard Manual Generation to ensure compatibility
+            final name = fullContact.displayName;
+            final phone = fullContact.phones.isNotEmpty ? fullContact.phones.first.number : "";
+            final email = fullContact.emails.isNotEmpty ? fullContact.emails.first.address : "";
+            
+            final vCard = "BEGIN:VCARD\n"
+                          "VERSION:3.0\n"
+                          "FN:$name\n"
+                          "TEL:$phone\n"
+                          "EMAIL:$email\n"
+                          "END:VCARD";
+                          
+            _nfcManager.startNfc(vCard, explicitMode: "CONTACT");
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Contact loaded: $name", style: GoogleFonts.outfit()),
+                  backgroundColor: AppColors.neonCyan.withOpacity(0.8),
+                )
+              );
+            }
+          } else {
+            throw Exception("Could not load contact details");
+          }
         }
       }
-    } else {
-       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Contact permission required"))
-      );
+    } catch (e) {
+      print('❌ Contact picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to load contact: ${e.toString()}", style: GoogleFonts.outfit()),
+            backgroundColor: Colors.red.withOpacity(0.8),
+          )
+        );
+      }
     }
   }
 
@@ -1021,7 +1279,59 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
           child: Text(_detectedType, style: GoogleFonts.orbitron(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
         ).animate().scale(duration: 300.ms),
         const SizedBox(height: 30),
-         Stack(children: [ClipRRect(borderRadius: BorderRadius.circular(24), child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(padding: const EdgeInsets.fromLTRB(24, 8, 50, 8), decoration: BoxDecoration(color: AppColors.glassWhite, borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white12)), child: TextField(controller: _controller, style: GoogleFonts.outfit(fontSize: 22, color: Colors.white), cursorColor: AppColors.neonCyan, textAlign: TextAlign.center, decoration: InputDecoration(border: InputBorder.none, hintText: "Type URL or Text...", hintStyle: GoogleFonts.outfit(color: Colors.white30)))))), Positioned(right: 8, top: 8, bottom: 8, child: IconButton(icon: Icon(Icons.save, color: Colors.white38), onPressed: _saveItem))]).animate().fadeIn().slideY(begin: 0.2, end: 0),
+         Stack(
+           children: [
+             ClipRRect(
+               borderRadius: BorderRadius.circular(24), 
+               child: BackdropFilter(
+                 filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), 
+                 child: Container(
+                   padding: const EdgeInsets.fromLTRB(24, 8, 90, 8), 
+                   decoration: BoxDecoration(
+                     color: AppColors.glassWhite, 
+                     borderRadius: BorderRadius.circular(24), 
+                     border: Border.all(color: Colors.white12)
+                   ), 
+                   child: TextField(
+                     controller: _controller, 
+                     style: GoogleFonts.outfit(fontSize: 22, color: Colors.white), 
+                     cursorColor: AppColors.neonCyan, 
+                     textAlign: TextAlign.center, 
+                     decoration: InputDecoration(
+                       border: InputBorder.none, 
+                       hintText: "Type URL or Text...", 
+                       hintStyle: GoogleFonts.outfit(color: Colors.white30)
+                     )
+                   )
+                 )
+               )
+             ), 
+             Positioned(
+               right: 48, 
+               top: 8, 
+               bottom: 8, 
+               child: IconButton(
+                 icon: Icon(Icons.content_copy, color: Colors.white38),
+                 tooltip: 'Copy',
+                 onPressed: () {
+                   if (_controller.text.isNotEmpty) {
+                     _copyToClipboard(_controller.text);
+                   }
+                 },
+               )
+             ),
+             Positioned(
+               right: 8, 
+               top: 8, 
+               bottom: 8, 
+               child: IconButton(
+                 icon: Icon(Icons.save, color: Colors.white38), 
+                 tooltip: 'Save',
+                 onPressed: _saveItem
+               )
+             )
+           ]
+         ).animate().fadeIn().slideY(begin: 0.2, end: 0),
          const SizedBox(height: 16),
          TextButton.icon(
             onPressed: _pickContact,
@@ -1216,8 +1526,57 @@ class _SavedItemsPageState extends State<SavedItemsPage> {
                                       Text(data, style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                                     ],
                                   )),
+                                  // Copy button
                                   IconButton(
-                                    icon: Icon(Icons.edit, size: 20, color: Colors.white30),
+                                    icon: Icon(Icons.copy, size: 18, color: Colors.white30),
+                                    tooltip: 'Copy',
+                                    onPressed: () async {
+                                      try {
+                                        await Clipboard.setData(ClipboardData(text: data));
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Row(
+                                                children: [
+                                                  Icon(Icons.check_circle, color: AppColors.neonCyan, size: 20),
+                                                  SizedBox(width: 8),
+                                                  Text("Copied!", style: GoogleFonts.outfit()),
+                                                ],
+                                              ),
+                                              backgroundColor: AppColors.neonCyan.withOpacity(0.2),
+                                              duration: Duration(seconds: 1),
+                                            )
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('Copy failed: $e');
+                                      }
+                                    },
+                                  ),
+                                  // Share button
+                                  IconButton(
+                                    icon: Icon(Icons.share, size: 18, color: Colors.white30),
+                                    tooltip: 'Share',
+                                    onPressed: () async {
+                                      try {
+                                        await Share.share(data, subject: name);
+                                      } catch (e) {
+                                        print('Share failed: $e');
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text("Share failed", style: GoogleFonts.outfit()),
+                                              backgroundColor: Colors.red.withOpacity(0.8),
+                                            )
+                                          );
+                                        }
+                                      }
+                                    },
+                                  ),
+                                  // Edit button
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 18, color: Colors.white30),
+                                    tooltip: 'Edit',
                                     onPressed: () => _edit(itemMap),
                                   ),
                                   Icon(Icons.nfc, color: AppColors.neonCyan.withOpacity(0.5))
