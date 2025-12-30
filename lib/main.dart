@@ -610,6 +610,12 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     final updateManager = UpdateManager();
     final updateInfo = await updateManager.checkForUpdates();
     
+    // Debug: Show current version
+    final packageInfo = await PackageInfo.fromPlatform();
+    print('🔍 Current version: ${packageInfo.version}');
+    print('🔍 Latest version: ${updateInfo?['latestVersion'] ?? 'unknown'}');
+    print('🔍 Has update: ${updateInfo?['hasUpdate'] ?? false}');
+    
     if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
       _showUpdateDialog(updateInfo);
     }
