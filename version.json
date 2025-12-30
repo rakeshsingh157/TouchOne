@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
-  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.0/app-release.apk",
-  "changelog": "🎉 Initial Release\n\n✨ Features:\n• NFC data transfer\n• Contact sharing\n• Auto-update system\n• Beautiful Material Design UI"
+  "version": "1.0.1",
+  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.0.1/app-release.apk",
+  "changelog": "🆕 What's New:\n• Donation support via UPI\n• Support the developer with a single tap\n\n✨ Features:\n• NFC data transfer\n• Contact sharing\n• Auto-update system\n• Beautiful Material Design UI"
 }
