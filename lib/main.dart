@@ -41,8 +41,8 @@ class UpdateManager {
   UpdateManager._internal();
 
   // 🔥 STEP 1: GitHub/Server URL for version.json
-  // Replace with your actual GitHub raw URL or server URL
-  static const String versionUrl = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/version.json';
+  // TODO: Update YOUR_GITHUB_USERNAME with your actual GitHub username after creating repository
+  static const String versionUrl = 'https://raw.githubusercontent.com/rakeshsingh157/TouchOne/main/version.json';
   
   final ValueNotifier<double> downloadProgress = ValueNotifier(0.0);
   final ValueNotifier<bool> isDownloading = ValueNotifier(false);
