@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
-  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.1.0/TouchOne-v1.1.0.apk",
-  "changelog": "✅ Critical Fix:\n• Fixed auto-update installation (parsing error resolved!)\n• APK now downloads to proper location\n• File integrity verification before install\n• Better error handling and logging\n\n🔧 Improvements:\n• Uses Download folder for better compatibility\n• Validates file size after download\n• Proper MIME type for APK installation\n• Delayed cleanup after install\n\n🎨 UI:\n• Perfect navigation layout\n\n💜 Features:\n• Working auto-update system\n• UPI donation\n• NFC transfer"
+  "version": "1.1.1",
+  "download_url": "https://github.com/rakeshsingh157/TouchOne/releases/download/v1.1.1/TouchOne-v1.1.1.apk",
+  "changelog": "🎨 UI Fix:\n• Navigation with 4 evenly distributed buttons\n• Info, Saved Items, Donate, History\n• Perfect button alignment\n• Consistent card styling\n\n✨ Features:\n• Working auto-update\n• NFC transfer\n• UPI donation"
 }

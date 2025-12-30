@@ -845,16 +845,6 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
               if (!isWaiting && !isSuccess)
                  Positioned(bottom: 40, left: 24, right: 24, child: _buildSendButton(availability))
                  .animate().slideY(begin: 1, end: 0, duration: 600.ms, curve: Curves.easeOutBack),
-
-              if (!isWaiting)
-                Positioned(
-                  top: 50, right: 20,
-                  child: IconButton(
-                    onPressed: _openSavedPage,
-                    icon: Icon(Icons.bookmark_rounded, color: AppColors.neonCyan),
-                    style: IconButton.styleFrom(backgroundColor: Colors.white10),
-                  ).animate().fadeIn(delay: 600.ms),
-                ),
                 
                if (isWaiting)
                   Positioned(
@@ -899,6 +889,22 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
                 onPressed: _openAboutPage,
                 icon: Icon(Icons.info_outline, color: Colors.white60, size: 24),
                 tooltip: 'About',
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            // Saved Items button
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.neonCyan.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.neonCyan.withOpacity(0.3)),
+              ),
+              child: IconButton(
+                onPressed: _openSavedPage,
+                icon: Icon(Icons.bookmark_rounded, color: AppColors.neonCyan, size: 24),
+                tooltip: 'Saved Items',
                 padding: EdgeInsets.zero,
               ),
             ),
