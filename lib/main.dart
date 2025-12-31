@@ -2096,6 +2096,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 
                 // Changelog
                 Container(
+                  constraints: BoxConstraints(maxHeight: 300),
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: AppColors.glassWhite,
@@ -2104,6 +2105,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         "WHAT'S NEW",
@@ -2114,11 +2116,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         ),
                       ),
                       SizedBox(height: 8),
-                      Text(
-                        widget.updateInfo['changelog'] ?? 'Bug fixes and improvements',
-                        style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14),
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Text(
+                            widget.updateInfo['changelog'] ?? 'Bug fixes and improvements',
+                            style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14, height: 1.5),
+                          ),
+                        ),
                       ),
                     ],
                   ),
