@@ -1221,7 +1221,7 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
               ),
               child: IconButton(
                 onPressed: () async {
-                  final upiUrl = 'upi://pay?pa=rakeshsingh157@oksbi&pn=TouchOne%20NFC&cu=INR';
+                  final upiUrl = 'upi://pay?pa=kumarpatelrakesh222@oksbi&pn=TouchOne%20NFC&cu=INR';
                   final uri = Uri.parse(upiUrl);
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri);
@@ -2348,7 +2348,7 @@ class _AboutPageState extends State<AboutPage> {
                           const SizedBox(height: 16),
                           _buildInfoRow(Icons.email, "kumarpatelrakesh222@gmail.com"),
                           const SizedBox(height: 16),
-                          _buildInfoRow(Icons.currency_rupee, "UPI: rakeshsingh157@oksbi", isCopyable: true),
+                          _buildInfoRow(Icons.currency_rupee, "UPI: kumarpatelrakesh222@oksbi", isCopyable: true),
                         ],
                       ).animate().scale(curve: Curves.easeOutBack),
                     ),
