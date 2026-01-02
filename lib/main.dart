@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:screenshot/screenshot.dart';
+import 'dart:ui' as ui;
 
 void main() {
   runApp(const MyApp());
@@ -1029,6 +1033,24 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     }
   }
 
+  // Show QR Code dialog
+  void _showQRCode() {
+    if (_controller.text.isEmpty) {
+      showBeautifulWarning(
+        context,
+        title: "Nothing to Show",
+        message: "Please enter some text or URL before generating a QR code.",
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) => QRCodeDialog(data: _controller.text),
+    );
+  }
+
   void _openSavedPage() async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedItemsPage()));
   }
@@ -1313,16 +1335,36 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
            ]
          ).animate().fadeIn().slideY(begin: 0.2, end: 0),
          const SizedBox(height: 16),
-         TextButton.icon(
-            onPressed: _pickContact,
-            icon: const Icon(Icons.contacts, color: AppColors.neonCyan),
-            label: Text("SHARE CONTACT", style: GoogleFonts.orbitron(color: Colors.white54, letterSpacing: 2)),
-            style: TextButton.styleFrom(
-              backgroundColor: AppColors.glassWhite,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
-            ),
-         ).animate().fadeIn(delay: 200.ms)
+         Row(
+           mainAxisAlignment: MainAxisAlignment.center,
+           children: [
+             Expanded(
+               child: TextButton.icon(
+                 onPressed: _pickContact,
+                 icon: const Icon(Icons.contacts, color: AppColors.neonCyan, size: 20),
+                 label: Text("CONTACT", style: GoogleFonts.orbitron(color: Colors.white54, fontSize: 11, letterSpacing: 1)),
+                 style: TextButton.styleFrom(
+                   backgroundColor: AppColors.glassWhite,
+                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+                 ),
+               ).animate().fadeIn(delay: 200.ms),
+             ),
+             SizedBox(width: 12),
+             Expanded(
+               child: TextButton.icon(
+                 onPressed: _showQRCode,
+                 icon: const Icon(Icons.qr_code_2, color: AppColors.neonPurple, size: 20),
+                 label: Text("QR CODE", style: GoogleFonts.orbitron(color: Colors.white54, fontSize: 11, letterSpacing: 1)),
+                 style: TextButton.styleFrom(
+                   backgroundColor: AppColors.glassWhite,
+                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))
+                 ),
+               ).animate().fadeIn(delay: 300.ms),
+             ),
+           ],
+         ),
        ],
      );
   }
@@ -2980,6 +3022,362 @@ class _FullScreenUpdateDialogState extends State<FullScreenUpdateDialog> {
   void dispose() {
     widget.updateManager.downloadProgress.removeListener(_updateProgress);
     super.dispose();
+  }
+}
+
+// --- QR CODE DIALOG ---
+class QRCodeDialog extends StatefulWidget {
+  final String data;
+
+  const QRCodeDialog({super.key, required this.data});
+
+  @override
+  State<QRCodeDialog> createState() => _QRCodeDialogState();
+}
+
+class _QRCodeDialogState extends State<QRCodeDialog> {
+  final ScreenshotController _screenshotController = ScreenshotController();
+  bool _isProcessing = false;
+
+  Future<void> _downloadQRCode() async {
+    try {
+      setState(() => _isProcessing = true);
+      
+      // Capture screenshot
+      final image = await _screenshotController.capture();
+      if (image != null) {
+        // Save to temporary directory and share
+        final directory = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final imagePath = '${directory.path}/TouchOne_QR_$timestamp.png';
+        final imageFile = File(imagePath);
+        await imageFile.writeAsBytes(image);
+        
+        // Show success and auto-share
+        if (mounted) {
+          showBeautifulSuccess(
+            context,
+            title: "QR Code Ready!",
+            message: "QR code has been generated. You can now share it!",
+          );
+          
+          // Auto open share dialog
+          await Future.delayed(Duration(milliseconds: 500));
+          await Share.shareXFiles(
+            [XFile(imagePath)],
+            text: 'Scan this QR code generated by TouchOne!',
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ QR download error: $e');
+      if (mounted) {
+        showBeautifulError(
+          context,
+          title: "Download Failed",
+          message: "Unable to generate QR image. Please try again.\\n\\nError: ${e.toString()}",
+          icon: Icons.download,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _shareQRCode() async {
+    try {
+      setState(() => _isProcessing = true);
+      
+      final image = await _screenshotController.capture();
+      if (image != null) {
+        final directory = await getTemporaryDirectory();
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final imagePath = '${directory.path}/TouchOne_QR_$timestamp.png';
+        final imageFile = File(imagePath);
+        await imageFile.writeAsBytes(image);
+        
+        await Share.shareXFiles(
+          [XFile(imagePath)],
+          text: 'Scan this QR code generated by TouchOne!',
+        );
+      }
+    } catch (e) {
+      print('❌ QR share error: $e');
+      if (mounted) {
+        showBeautifulError(
+          context,
+          title: "Share Failed",
+          message: "Unable to share QR code. Please try again.\\n\\nError: ${e.toString()}",
+          icon: Icons.share,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 400),
+        child: Stack(
+          children: [
+            // Main Content
+            Container(
+              margin: EdgeInsets.only(top: 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.background.withOpacity(0.95),
+                    Color(0xFF1A1A2E).withOpacity(0.95),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: AppColors.neonPurple.withOpacity(0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.neonPurple.withOpacity(0.3),
+                    blurRadius: 40,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(28.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Title
+                        SizedBox(height: 30),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.qr_code_2, color: AppColors.neonPurple, size: 28),
+                            SizedBox(width: 12),
+                            Text(
+                              "QR Code",
+                              style: GoogleFonts.orbitron(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ).animate().fadeIn().slideY(begin: -0.3, end: 0),
+                        
+                        SizedBox(height: 24),
+                        
+                        // QR Code
+                        Screenshot(
+                          controller: _screenshotController,
+                          child: Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.neonPurple.withOpacity(0.5),
+                                  blurRadius: 30,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                QrImageView(
+                                  data: widget.data,
+                                  version: QrVersions.auto,
+                                  size: 250,
+                                  backgroundColor: Colors.white,
+                                  eyeStyle: QrEyeStyle(
+                                    eyeShape: QrEyeShape.square,
+                                    color: Color(0xFF1A1A2E),
+                                  ),
+                                  dataModuleStyle: QrDataModuleStyle(
+                                    dataModuleShape: QrDataModuleShape.square,
+                                    color: Color(0xFF1A1A2E),
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.neonPurple.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.fingerprint, size: 20, color: AppColors.neonPurple),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "TouchOne",
+                                        style: GoogleFonts.orbitron(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.neonPurple,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ).animate().scale(begin: Offset(0.8, 0.8), curve: Curves.elasticOut, duration: 600.ms),
+                        
+                        SizedBox(height: 24),
+                        
+                        // Data preview
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.glassWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Text(
+                            widget.data.length > 80 
+                                ? '${widget.data.substring(0, 80)}...' 
+                                : widget.data,
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color: Colors.white.withOpacity(0.8),
+                              height: 1.5,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ).animate().fadeIn(delay: 200.ms),
+                        
+                        SizedBox(height: 28),
+                        
+                        // Action buttons
+                        if (_isProcessing)
+                          CircularProgressIndicator(
+                            color: AppColors.neonPurple,
+                            strokeWidth: 3,
+                          )
+                        else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildActionButton(
+                                  icon: Icons.file_download,
+                                  label: "DOWNLOAD",
+                                  gradient: LinearGradient(
+                                    colors: [AppColors.neonCyan, AppColors.neonCyan.withOpacity(0.7)],
+                                  ),
+                                  onPressed: _downloadQRCode,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: _buildActionButton(
+                                  icon: Icons.share,
+                                  label: "SHARE",
+                                  gradient: LinearGradient(
+                                    colors: [AppColors.neonPurple, AppColors.neonPurple.withOpacity(0.7)],
+                                  ),
+                                  onPressed: _shareQRCode,
+                                ),
+                              ),
+                            ],
+                          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            // Close button
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red.withOpacity(0.9),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.5),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.close, color: Colors.white, size: 24),
+                ),
+              ).animate().scale(delay: 300.ms, curve: Curves.elasticOut),
+            ),
+          ],
+        ),
+      ).animate().scale(begin: Offset(0.8, 0.8), curve: Curves.elasticOut),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.colors.first.withOpacity(0.3),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  label,
+                  style: GoogleFonts.orbitron(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
