@@ -737,7 +737,7 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
      );
   }
   
-  // 🔥 Check for app updates
+  // 🔥 Check for app updates (AUTOMATIC)
   Future<void> _checkForUpdates() async {
     await Future.delayed(const Duration(seconds: 2)); // Wait for app to settle
     
@@ -752,30 +752,101 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       print('🔍 Has update: ${updateInfo?['hasUpdate'] ?? false}');
       
       if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
-        _showUpdateDialog(updateInfo);
+        // 🚀 AUTO UPDATE: Download and install automatically
+        print('🚀 Auto-update started...');
+        
+        // Show downloading notification
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.neonCyan),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Downloading update v${updateInfo['latestVersion']}...',
+                      style: GoogleFonts.outfit(fontSize: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.neonPurple.withOpacity(0.9),
+              duration: Duration(seconds: 60), // Long duration for download
+            ),
+          );
+        }
+        
+        // Download APK
+        final apkPath = await updateManager.downloadApk();
+        
+        if (apkPath != null && mounted) {
+          print('✅ Download complete, installing...');
+          
+          // Hide downloading snackbar
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          
+          // Show installing notification
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.system_update, color: AppColors.neonCyan, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Installing update...',
+                      style: GoogleFonts.outfit(fontSize: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.neonCyan.withOpacity(0.9),
+              duration: Duration(seconds: 5),
+            ),
+          );
+          
+          // Install APK automatically
+          await Future.delayed(Duration(milliseconds: 500));
+          await updateManager.installApk(apkPath);
+          
+          print('📱 Update installer opened');
+        } else if (mounted) {
+          // Download failed
+          print('❌ Download failed');
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text(
+                    'Update download failed',
+                    style: GoogleFonts.outfit(fontSize: 14),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.withOpacity(0.9),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } catch (e) {
       print('❌ Update check error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to check for updates', style: GoogleFonts.outfit()),
-            backgroundColor: Colors.redAccent.withOpacity(0.8),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
+      // Silent fail - don't disturb user if update check fails
     }
   }
   
-  // 🔥 Show update dialog
-  void _showUpdateDialog(Map<String, dynamic> updateInfo) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => UpdateDialog(updateInfo: updateInfo),
-    );
-  }
+  // 🔥 Update dialog removed - updates are now automatic
 
   void _startNfc() {
     if (_controller.text.isEmpty) {
