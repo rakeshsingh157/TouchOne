@@ -737,7 +737,7 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
      );
   }
   
-  // 🔥 Check for app updates (AUTOMATIC)
+  // 🔥 Check for app updates (AUTOMATIC WITH FULL-SCREEN PROGRESS)
   Future<void> _checkForUpdates() async {
     await Future.delayed(const Duration(seconds: 2)); // Wait for app to settle
     
@@ -752,84 +752,20 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       print('🔍 Has update: ${updateInfo?['hasUpdate'] ?? false}');
       
       if (updateInfo != null && updateInfo['hasUpdate'] == true && mounted) {
-        // 🚀 AUTO UPDATE: Download and install automatically
-        print('🚀 Auto-update started...');
+        // 🚀 SHOW FULL-SCREEN UPDATE DIALOG
+        print('🚀 Auto-update started with full-screen dialog...');
         
-        // Show downloading notification
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.neonCyan),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Downloading update v${updateInfo['latestVersion']}...',
-                      style: GoogleFonts.outfit(fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: AppColors.neonPurple.withOpacity(0.9),
-              duration: Duration(seconds: 60), // Long duration for download
-            ),
-          );
-        }
-        
-        // Download APK
-        final apkPath = await updateManager.downloadApk();
-        
-        if (apkPath != null && mounted) {
-          print('✅ Download complete, installing...');
-          
-          // Hide downloading snackbar
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          
-          // Show installing notification
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.system_update, color: AppColors.neonCyan, size: 20),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Installing update...',
-                      style: GoogleFonts.outfit(fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: AppColors.neonCyan.withOpacity(0.9),
-              duration: Duration(seconds: 5),
-            ),
-          );
-          
-          // Install APK automatically
-          await Future.delayed(Duration(milliseconds: 500));
-          await updateManager.installApk(apkPath);
-          
-          print('📱 Update installer opened');
-        } else if (mounted) {
-          // Download failed
-          print('❌ Download failed');
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          showBeautifulError(
-            context,
-            title: "Update Failed",
-            message: "Unable to download the latest version. Please check your internet connection and try again later.",
-            icon: Icons.cloud_download,
-            iconColor: Colors.orange,
-          );
-        }
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          barrierColor: Colors.transparent,
+          builder: (context) => FullScreenUpdateDialog(
+            currentVersion: updateInfo['currentVersion'],
+            latestVersion: updateInfo['latestVersion'],
+            changelog: updateInfo['changelog'] ?? 'Bug fixes and improvements',
+            updateManager: updateManager,
+          ),
+        );
       }
     } catch (e) {
       print('❌ Update check error: $e');
@@ -2710,5 +2646,340 @@ void showBeautifulInfo(
       onAction: onAction,
     ),
   );
+}
+
+// --- FULL-SCREEN UPDATE DIALOG WITH PROGRESS ---
+class FullScreenUpdateDialog extends StatefulWidget {
+  final String currentVersion;
+  final String latestVersion;
+  final String changelog;
+  final UpdateManager updateManager;
+
+  const FullScreenUpdateDialog({
+    super.key,
+    required this.currentVersion,
+    required this.latestVersion,
+    required this.changelog,
+    required this.updateManager,
+  });
+
+  @override
+  State<FullScreenUpdateDialog> createState() => _FullScreenUpdateDialogState();
+}
+
+class _FullScreenUpdateDialogState extends State<FullScreenUpdateDialog> {
+  String _status = "Preparing download...";
+  double _progress = 0.0;
+  bool _isDownloading = false;
+  bool _isInstalling = false;
+  bool _error = false;
+  String _errorMessage = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _startUpdate();
+  }
+
+  Future<void> _startUpdate() async {
+    setState(() {
+      _isDownloading = true;
+      _status = "Downloading update...";
+    });
+
+    // Listen to download progress
+    widget.updateManager.downloadProgress.addListener(_updateProgress);
+
+    // Download APK
+    final apkPath = await widget.updateManager.downloadApk();
+
+    widget.updateManager.downloadProgress.removeListener(_updateProgress);
+
+    if (apkPath != null && mounted) {
+      setState(() {
+        _isDownloading = false;
+        _isInstalling = true;
+        _status = "Download complete! Installing...";
+        _progress = 1.0;
+      });
+
+      await Future.delayed(Duration(milliseconds: 800));
+      
+      // Install APK
+      await widget.updateManager.installApk(apkPath);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } else if (mounted) {
+      setState(() {
+        _error = true;
+        _errorMessage = "Download failed. Please check your internet connection.";
+        _status = "Update failed";
+      });
+    }
+  }
+
+  void _updateProgress() {
+    if (mounted) {
+      setState(() {
+        _progress = widget.updateManager.downloadProgress.value;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async => _error, // Only allow back if error
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          children: [
+            // Background
+            const MeshGradientBackground(),
+            
+            // Blur overlay
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                color: Colors.black.withOpacity(0.7),
+              ),
+            ),
+            
+            // Content
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Update Icon
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            _error ? Colors.red.withOpacity(0.4) : AppColors.neonCyan.withOpacity(0.4),
+                            _error ? Colors.red.withOpacity(0.1) : AppColors.neonCyan.withOpacity(0.1),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_error ? Colors.red : AppColors.neonCyan).withOpacity(0.5),
+                            blurRadius: 40,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _error ? Icons.error_outline : 
+                        _isInstalling ? Icons.install_mobile : 
+                        Icons.system_update,
+                        size: 60,
+                        color: _error ? Colors.red : AppColors.neonCyan,
+                      ),
+                    ).animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(duration: 2.seconds, color: Colors.white24)
+                      .then()
+                      .shake(duration: 1.seconds, hz: 2),
+                    
+                    SizedBox(height: 40),
+                    
+                    // Title
+                    Text(
+                      _error ? "Update Failed" : "Updating TouchOne",
+                      style: GoogleFonts.orbitron(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ).animate().fadeIn().slideY(begin: -0.3, end: 0),
+                    
+                    SizedBox(height: 12),
+                    
+                    // Version info
+                    if (!_error) ...[
+                      Text(
+                        "v${widget.currentVersion} → v${widget.latestVersion}",
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          color: AppColors.neonPurple,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ).animate().fadeIn(delay: 200.ms),
+                      
+                      SizedBox(height: 32),
+                      
+                      // Status
+                      Text(
+                        _status,
+                        style: GoogleFonts.outfit(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                        textAlign: TextAlign.center,
+                      ).animate().fadeIn(delay: 400.ms),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Progress Bar
+                      Container(
+                        width: double.infinity,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: AppColors.glassWhite,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: _progress,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              _isInstalling ? AppColors.neonPurple : AppColors.neonCyan,
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 600.ms).scaleX(begin: 0),
+                      
+                      SizedBox(height: 12),
+                      
+                      // Progress percentage
+                      Text(
+                        "${(_progress * 100).toStringAsFixed(0)}%",
+                        style: GoogleFonts.orbitron(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.neonCyan,
+                        ),
+                      ).animate().fadeIn(delay: 800.ms),
+                      
+                      SizedBox(height: 40),
+                      
+                      // Changelog
+                      Container(
+                        constraints: BoxConstraints(maxHeight: 200),
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppColors.glassWhite,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.new_releases, color: AppColors.neonPurple, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "What's New",
+                                  style: GoogleFonts.orbitron(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Flexible(
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  widget.changelog,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.8),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: 1000.ms).slideY(begin: 0.3, end: 0),
+                    ],
+                    
+                    // Error message
+                    if (_error) ...[
+                      Container(
+                        padding: EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          _errorMessage,
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: Colors.white,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      
+                      SizedBox(height: 32),
+                      
+                      // Close button
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.red, Colors.red.withOpacity(0.7)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).pop(),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Text(
+                                "CLOSE",
+                                style: GoogleFonts.orbitron(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    widget.updateManager.downloadProgress.removeListener(_updateProgress);
+    super.dispose();
+  }
 }
 
