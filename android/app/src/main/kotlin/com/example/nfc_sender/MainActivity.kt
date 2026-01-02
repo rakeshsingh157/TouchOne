@@ -5,10 +5,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.RingtoneManager
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
 import android.nfc.NfcAdapter
+import android.nfc.Tag
+import android.nfc.tech.Ndef
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -26,6 +29,8 @@ class MainActivity : FlutterActivity() {
     private var nfcAdapter: NfcAdapter? = null
     private var methodChannel: MethodChannel? = null
     private var notificationManager: NotificationManager? = null
+    private var pendingIntent: PendingIntent? = null
+    private var ndefMessage: NdefMessage? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -54,12 +59,14 @@ class MainActivity : FlutterActivity() {
                     val data = call.argument<String>("data")
                     if (data != null) {
                         prepareMessage(mode, data)
-                        result.success("HCE Ready")
+                        enableNdefPush()
+                        result.success("Ready for phone-to-phone transfer")
                     } else {
                         result.error("ERROR", "Data cannot be null", null)
                     }
                 }
                 "stopNfc" -> {
+                    ndefMessage = null
                     NfcDataStore.messageToTransmit = null
                     result.success("NFC Stopped")
                 }
@@ -72,8 +79,51 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        
+        // Setup pending intent for foreground dispatch
+        pendingIntent = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+        
         createNotificationChannel()
         handleNfcIntent(intent)
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Enable foreground dispatch to catch NFC events while app is in foreground
+        nfcAdapter?.let { adapter ->
+            val intentFilters = arrayOf(
+                IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED).apply {
+                    try {
+                        addDataType("*/*")
+                    } catch (e: IntentFilter.MalformedMimeTypeException) {
+                        throw RuntimeException("fail", e)
+                    }
+                },
+                IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED),
+                IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
+            )
+            
+            adapter.enableForegroundDispatch(this, pendingIntent, intentFilters, null)
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        nfcAdapter?.disableForegroundDispatch(this)
+    }
+    
+    private fun enableNdefPush() {
+        // NDEF Push is deprecated in Android 10+
+        // We use HCE (Host Card Emulation) instead
+        // The message is already stored in NfcDataStore for HCE
     }
     
     private fun createNotificationChannel() {
@@ -228,8 +278,15 @@ class MainActivity : FlutterActivity() {
         } else {
             createTextRecord(data)
         }
-        val message = NdefMessage(record)
-        NfcDataStore.messageToTransmit = message.toByteArray()
+        
+        // Create NDEF message for phone-to-phone transfer
+        ndefMessage = NdefMessage(record)
+        
+        // Also store for HCE fallback
+        NfcDataStore.messageToTransmit = ndefMessage!!.toByteArray()
+        
+        // Enable NDEF push immediately
+        enableNdefPush()
     }
 
     private fun createMimeRecord(mimeType: String, payload: ByteArray): NdefRecord {

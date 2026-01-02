@@ -1347,7 +1347,22 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
      );
   }
   
-  Widget _buildRadarStatus() => Column(key: const ValueKey("RADAR"), children: [Icon(Icons.nfc, size: 60, color: AppColors.neonCyan).animate(onPlay: (c)=>c.repeat(reverse: true)).scale(begin: Offset(0.8,0.8), end: Offset(1.2,1.2), duration: 1.seconds).then().shimmer(color: Colors.white), SizedBox(height: 20), Text("TRANSMITTING...", style: GoogleFonts.orbitron(fontSize: 18, color: AppColors.neonCyan)), SizedBox(height: 10), Text("Hold near device", style: GoogleFonts.outfit(color: Colors.white54))]);
+  Widget _buildRadarStatus() => Column(
+    key: const ValueKey("RADAR"), 
+    children: [
+      Icon(Icons.nfc, size: 60, color: AppColors.neonCyan)
+        .animate(onPlay: (c)=>c.repeat(reverse: true))
+        .scale(begin: Offset(0.8,0.8), end: Offset(1.2,1.2), duration: 1.seconds)
+        .then()
+        .shimmer(color: Colors.white), 
+      SizedBox(height: 20), 
+      Text("READY TO SEND", style: GoogleFonts.orbitron(fontSize: 18, color: AppColors.neonCyan)), 
+      SizedBox(height: 10), 
+      Text("Touch phones together", style: GoogleFonts.outfit(color: Colors.white54, fontSize: 14)),
+      SizedBox(height: 6),
+      Text("Back to back (NFC areas)", style: GoogleFonts.outfit(color: Colors.white30, fontSize: 12, fontStyle: FontStyle.italic))
+    ]
+  );
   Widget _buildSuccessStatus() => Column(key: const ValueKey("SUCCESS"), children: [Icon(Icons.check_circle_outline, size: 80, color: AppColors.neonCyan).animate().scale(curve: Curves.elasticOut, duration: 800.ms).then().boxShadow(end: BoxShadow(color: AppColors.neonCyan, blurRadius: 40)), SizedBox(height: 20), Text("SENT!", style: GoogleFonts.orbitron(fontSize: 18, color: AppColors.neonCyan))]);
   Widget _buildErrorStatus() => Column(key: const ValueKey("ERROR"), children: [Icon(Icons.error_outline, size: 60, color: Colors.redAccent).animate().shake(), SizedBox(height: 20), Text("FAILED", style: GoogleFonts.orbitron(fontSize: 18, color: Colors.redAccent)), SizedBox(height: 10), Text(_nfcManager.lastError.isEmpty ? "Unknown Error" : _nfcManager.lastError, style: GoogleFonts.outfit(color: Colors.white54), textAlign: TextAlign.center)]);
   
