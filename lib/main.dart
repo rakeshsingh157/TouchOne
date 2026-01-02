@@ -822,21 +822,12 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
           // Download failed
           print('❌ Download failed');
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red),
-                  SizedBox(width: 12),
-                  Text(
-                    'Update download failed',
-                    style: GoogleFonts.outfit(fontSize: 14),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.red.withOpacity(0.9),
-              duration: Duration(seconds: 3),
-            ),
+          showBeautifulError(
+            context,
+            title: "Update Failed",
+            message: "Unable to download the latest version. Please check your internet connection and try again later.",
+            icon: Icons.cloud_download,
+            iconColor: Colors.orange,
           );
         }
       }
@@ -852,17 +843,12 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     if (_controller.text.isEmpty) {
         setState(() => _viewState = NfcState.error);
         _triggerHaptic(feedBackType: FeedbackType.error);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red),
-                SizedBox(width: 8),
-                Text("Please enter URL or text first", style: GoogleFonts.outfit()),
-              ],
-            ),
-            backgroundColor: Colors.red.withOpacity(0.8),
-          )
+        showBeautifulError(
+          context,
+          title: "Empty Input",
+          message: "Please enter a URL or text message before initiating NFC transfer.",
+          icon: Icons.text_fields,
+          iconColor: Colors.orange,
         );
         Future.delayed(const Duration(seconds: 2), () { 
           if(mounted) setState(() => _viewState = NfcState.idle); 
@@ -893,11 +879,13 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       print('❌ NFC start error: $e');
       setState(() => _viewState = NfcState.error);
       _triggerHaptic(feedBackType: FeedbackType.error);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("NFC error: ${e.toString()}", style: GoogleFonts.outfit()),
-          backgroundColor: Colors.red.withOpacity(0.8),
-        )
+      showBeautifulError(
+        context,
+        title: "NFC Error",
+        message: "Failed to start NFC transfer. Please ensure NFC is enabled and try again.\n\nError: ${e.toString()}",
+        icon: Icons.nfc,
+        actionText: "Open Settings",
+        onAction: () => _nfcManager.openSettings(),
       );
       Future.delayed(const Duration(seconds: 2), () { 
         if(mounted) setState(() => _viewState = NfcState.idle); 
@@ -928,11 +916,11 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     } catch (e) {
       print('❌ Copy failed: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to copy", style: GoogleFonts.outfit()),
-            backgroundColor: Colors.red.withOpacity(0.8),
-          )
+        showBeautifulError(
+          context,
+          title: "Copy Failed",
+          message: "Unable to copy text to clipboard. Please try again.\n\nError: ${e.toString()}",
+          icon: Icons.content_copy_outlined,
         );
       }
     }
@@ -940,11 +928,10 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
 
   void _saveItem() async {
     if (_controller.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Please enter some text first", style: GoogleFonts.outfit()),
-          backgroundColor: Colors.orange.withOpacity(0.8),
-        )
+      showBeautifulWarning(
+        context,
+        title: "Nothing to Save",
+        message: "Please enter some text or URL before saving.",
       );
       return;
     }
@@ -1009,11 +996,11 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
         } catch (e) {
           print('❌ Save failed: $e');
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Failed to save: $e", style: GoogleFonts.outfit()),
-                backgroundColor: Colors.red.withOpacity(0.8),
-              )
+            showBeautifulError(
+              context,
+              title: "Save Failed",
+              message: "Unable to save item. Please check storage permissions and try again.\n\nError: ${e.toString()}",
+              icon: Icons.bookmark_border,
             );
           }
         }
@@ -1021,11 +1008,11 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     } catch (e) {
       print('❌ Save dialog error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error opening save dialog", style: GoogleFonts.outfit()),
-            backgroundColor: Colors.red.withOpacity(0.8),
-          )
+        showBeautifulError(
+          context,
+          title: "Dialog Error",
+          message: "Unable to open save dialog. Please try again.\n\nError: ${e.toString()}",
+          icon: Icons.error_outline,
         );
       }
     }
@@ -1037,22 +1024,12 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       
       if (status.isDenied) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                  SizedBox(width: 8),
-                  Expanded(child: Text("Contact permission denied", style: GoogleFonts.outfit())),
-                ],
-              ),
-              backgroundColor: Colors.orange.withOpacity(0.8),
-              action: SnackBarAction(
-                label: 'SETTINGS',
-                textColor: Colors.white,
-                onPressed: () => openAppSettings(),
-              ),
-            )
+          showBeautifulWarning(
+            context,
+            title: "Permission Required",
+            message: "TouchOne needs access to your contacts to import contact information for NFC transfer.",
+            actionText: "Open Settings",
+            onAction: () => openAppSettings(),
           );
         }
         return;
@@ -1060,16 +1037,12 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
       
       if (status.isPermanentlyDenied) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Please enable contacts in settings", style: GoogleFonts.outfit()),
-              backgroundColor: Colors.red.withOpacity(0.8),
-              action: SnackBarAction(
-                label: 'OPEN SETTINGS',
-                textColor: Colors.white,
-                onPressed: () => openAppSettings(),
-              ),
-            )
+          showBeautifulError(
+            context,
+            title: "Permission Denied",
+            message: "Contacts permission is permanently denied. Please enable it manually in app settings to import contacts.",
+            actionText: "Open Settings",
+            onAction: () => openAppSettings(),
           );
         }
         return;
@@ -1110,11 +1083,11 @@ class _NfcHomePageState extends State<NfcHomePage> with WidgetsBindingObserver {
     } catch (e) {
       print('❌ Contact picker error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to load contact: ${e.toString()}", style: GoogleFonts.outfit()),
-            backgroundColor: Colors.red.withOpacity(0.8),
-          )
+        showBeautifulError(
+          context,
+          title: "Contact Loading Failed",
+          message: "Unable to load contact information. Please ensure the contact has complete details and try again.\\n\\nError: ${e.toString()}",
+          icon: Icons.contact_phone,
         );
       }
     }
@@ -2454,3 +2427,288 @@ class ParticleExplosion extends StatelessWidget {
 }
 
 enum FeedbackType { light, medium, success, error }
+
+// --- BEAUTIFUL ERROR DIALOG ---
+class BeautifulErrorDialog extends StatelessWidget {
+  final String title;
+  final String message;
+  final IconData icon;
+  final Color iconColor;
+  final String? actionText;
+  final VoidCallback? onAction;
+
+  const BeautifulErrorDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    this.icon = Icons.error_outline,
+    this.iconColor = Colors.red,
+    this.actionText,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 340),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.background.withOpacity(0.95),
+              Color(0xFF1A1A2E).withOpacity(0.95),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: iconColor.withOpacity(0.3),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: iconColor.withOpacity(0.2),
+              blurRadius: 30,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon with animated background
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          iconColor.withOpacity(0.3),
+                          iconColor.withOpacity(0.1),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 45,
+                      color: iconColor,
+                    ),
+                  ).animate().scale(curve: Curves.elasticOut, duration: 600.ms).fadeIn(),
+                  
+                  SizedBox(height: 24),
+                  
+                  // Title
+                  Text(
+                    title,
+                    style: GoogleFonts.orbitron(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ).animate().fadeIn(delay: 100.ms).slideY(begin: -0.3, end: 0),
+                  
+                  SizedBox(height: 16),
+                  
+                  // Message
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.glassWhite,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Text(
+                      message,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ).animate().fadeIn(delay: 200.ms).scale(begin: Offset(0.9, 0.9)),
+                  
+                  SizedBox(height: 28),
+                  
+                  // Action Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (actionText != null && onAction != null) ...[
+                        Expanded(
+                          child: _buildButton(
+                            context,
+                            text: actionText!,
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              onAction!();
+                            },
+                            gradient: LinearGradient(
+                              colors: [iconColor, iconColor.withOpacity(0.7)],
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: _buildButton(
+                          context,
+                          text: actionText != null ? "Cancel" : "OK",
+                          onPressed: () => Navigator.of(context).pop(),
+                          gradient: LinearGradient(
+                            colors: [Colors.grey[800]!, Colors.grey[700]!],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3, end: 0),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ).animate().scale(begin: Offset(0.8, 0.8), curve: Curves.elasticOut);
+  }
+
+  Widget _buildButton(
+    BuildContext context, {
+    required String text,
+    required VoidCallback onPressed,
+    required Gradient gradient,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.colors.first.withOpacity(0.3),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            child: Text(
+              text,
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- ERROR HELPER FUNCTION ---
+void showBeautifulError(
+  BuildContext context, {
+  required String title,
+  required String message,
+  IconData? icon,
+  Color? iconColor,
+  String? actionText,
+  VoidCallback? onAction,
+}) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black54,
+    builder: (context) => BeautifulErrorDialog(
+      title: title,
+      message: message,
+      icon: icon ?? Icons.error_outline,
+      iconColor: iconColor ?? Colors.red,
+      actionText: actionText,
+      onAction: onAction,
+    ),
+  );
+}
+
+// Success notification
+void showBeautifulSuccess(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black38,
+    builder: (context) => BeautifulErrorDialog(
+      title: title,
+      message: message,
+      icon: Icons.check_circle_outline,
+      iconColor: AppColors.neonCyan,
+    ),
+  );
+}
+
+// Warning notification  
+void showBeautifulWarning(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String? actionText,
+  VoidCallback? onAction,
+}) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black54,
+    builder: (context) => BeautifulErrorDialog(
+      title: title,
+      message: message,
+      icon: Icons.warning_amber_rounded,
+      iconColor: Colors.orange,
+      actionText: actionText,
+      onAction: onAction,
+    ),
+  );
+}
+
+// Info notification
+void showBeautifulInfo(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String? actionText,
+  VoidCallback? onAction,
+}) {
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black38,
+    builder: (context) => BeautifulErrorDialog(
+      title: title,
+      message: message,
+      icon: Icons.info_outline,
+      iconColor: AppColors.neonBlue,
+      actionText: actionText,
+      onAction: onAction,
+    ),
+  );
+}
+
